@@ -1,18 +1,15 @@
 # MikroTik RouterOS Patch  [[English](README_EN.md)]
 
+### [[Discord](https://discord.gg/keV6MWQFtX)] [[Telegram](https://t.me/mikrotikpatch)] [[Keygen(Telegram Bot)](https://t.me/ROS_Keygen_Bot)]
 
 ### 国内镜像下载 密码: elseif
 [ [123pan](https://www.123pan.com/s/IpxgTd-BYjQh.html) ]
 [ [7.15.3](https://elseif.lanzouj.com/b00cre7g7a)]
-[ [7.15.2](https://elseif.lanzouj.com/b00crdq4hg)]
-[ [7.16beta4](https://elseif.lanzouj.com/b00crdq4fe) ] 
 [ [7.15.3-arm64](https://elseif.lanzouj.com/b00cre7g8b) ] 
-[ [7.15.2-arm64](https://elseif.lanzouj.com/b00crdq4ih) ] 
-[ [7.16beta4-arm64](https://elseif.lanzouj.com/b00crdq4gf) ] 
 [ [6.49.15](https://elseif.lanzouj.com/b00crdq4ji) ] 
 [ [6.49.13](https://elseif.lanzouj.com/b00crdq4kj) ]       
 
-
+支持:在线更新、在线授权、云备份、DDNS
 
 ![](image/install.png)
 ![](image/routeros.png)
@@ -25,6 +22,9 @@
 ![](image/renew.png)
 ### Chr模式授权许可
 ![](image/chr.png)
+
+![](image/arm.png)
+![](image/mips.png)
 
 ## 如何使用Shell
     安装 option-{version}.npk 包

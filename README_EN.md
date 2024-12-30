@@ -1,10 +1,11 @@
 # MikroTik RouterOS Patch [[中文](README.md)]
 
-### [[Discord](https://discord.gg/keV6MWQFtX)] [[Telegram](https://t.me/+99Mw06p3K7NlMmNl)]
+### [[Discord](https://discord.gg/keV6MWQFtX)] [[Telegram](https://t.me/mikrotikpatch)] [[Keygen(Telegram Bot)](https://t.me/ROS_Keygen_Bot)]
 
 ### Download [Latest Patched](https://github.com/elseif/MikroTikPatch/releases/latest) iso file,install it and enjoy.
 ### CHR image is both support BIOS and UEFI boot mode.
-### Support online upgrade.
+
+### Support online upgrade,online license,cloud backup,cloud DDNS
 
 ![](image/install.png)
 ![](image/routeros.png)
@@ -17,6 +18,9 @@
 ![](image/renew.png)
 ### license RouterOS for chr
 ![](image/chr.png)
+
+![](image/arm.png)
+![](image/mips.png)
 
 ## How to use shell
     install option-{version}.npk package

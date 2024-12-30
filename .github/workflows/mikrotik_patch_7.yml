@@ -16,10 +16,10 @@ env:
   CUSTOM_NPK_SIGN_PUBLIC_KEY: ${{ secrets.CUSTOM_NPK_SIGN_PUBLIC_KEY }}
   CUSTOM_CLOUD_PUBLIC_KEY: ${{ secrets.CUSTOM_CLOUD_PUBLIC_KEY }}
   MIKRO_LICENSE_PUBLIC_KEY: ${{ secrets.MIKRO_LICENSE_PUBLIC_KEY }}
-  MIKRO_NPK_SIGN_PUBLIC_LKEY: ${{ secrets.MIKRO_NPK_SIGN_PUBLIC_LKEY }}
+  MIKRO_NPK_SIGN_PUBLIC_KEY: ${{ secrets.MIKRO_NPK_SIGN_PUBLIC_KEY }}
   MIKRO_CLOUD_PUBLIC_KEY: ${{ secrets.MIKRO_CLOUD_PUBLIC_KEY }}
-  MIKRO_LICENCE_URL: ${{ secrets.MIKRO_LICENCE_URL }}
-  CUSTOM_LICENCE_URL: ${{ secrets.CUSTOM_LICENCE_URL }}
+  MIKRO_LICENSE_URL: ${{ secrets.MIKRO_LICENSE_URL }}
+  CUSTOM_LICENSE_URL: ${{ secrets.CUSTOM_LICENSE_URL }}
   MIKRO_UPGRADE_URL: ${{ secrets.MIKRO_UPGRADE_URL }}
   CUSTOM_UPGRADE_URL: ${{ secrets.CUSTOM_UPGRADE_URL }}
   MIKRO_RENEW_URL: ${{ secrets.MIKRO_RENEW_URL }}
@@ -86,6 +86,7 @@ jobs:
           ARCH='-arm64'
           echo "ARCH=$ARCH" >> $GITHUB_ENV
         fi
+        sudo apt-get update > /dev/null
 
     - name: Cache Squashfs
       if: steps.get_latest.outputs.has_new_version == 'true'
@@ -120,12 +121,12 @@ jobs:
         sudo mksquashfs option-root option.sfs -quiet -comp xz -no-xattrs -b 256k
         sudo rm -rf option-root
         if [ "${{ matrix.arch }}" == "x86" ]; then
-          sudo wget -O cpython-3.11.9.tar.gz -nv https://github.com/indygreg/python-build-standalone/releases/download/20240713/cpython-3.11.9+20240713-x86_64-unknown-linux-gnu-install_only.tar.gz
+          sudo wget -O cpython.tar.gz -nv https://github.com/indygreg/python-build-standalone/releases/download/20241016/cpython-3.11.10+20241016-x86_64-unknown-linux-musl-install_only_stripped.tar.gz
         elif [ "${{ matrix.arch }}" == "arm64" ]; then
-          sudo wget -O cpython-3.11.9.tar.gz -nv https://github.com/indygreg/python-build-standalone/releases/download/20240713/cpython-3.11.9+20240713-aarch64-unknown-linux-gnu-install_only.tar.gz
+          sudo wget -O cpython.tar.gz -nv https://github.com/indygreg/python-build-standalone/releases/download/20241016/cpython-3.11.10+20241016-aarch64-unknown-linux-gnu-install_only_stripped.tar.gz
         fi
-        sudo tar -xf cpython-3.11.9.tar.gz
-        sudo rm cpython-3.11.9.tar.gz
+        sudo tar -xf cpython.tar.gz
+        sudo rm cpython.tar.gz
         sudo rm -rf ./python/include
         sudo rm -rf ./python/share
         sudo mksquashfs python python3.sfs -quiet -comp xz -no-xattrs -b 256k
@@ -378,16 +379,27 @@ jobs:
     - name: Upload Files
       if: steps.get_latest.outputs.has_new_version == 'true'
       run: |
-        mkdir -p ./publish/$LATEST_VERSION
-        echo $LATEST_VERSION $BUILD_TIME > ./publish/NEWESTa7.${{ matrix.channel }}
-        cp CHANGELOG ./publish/$LATEST_VERSION/
-        cp ./all_packages/*.npk ./publish/$LATEST_VERSION/
-        sudo apt-get install -y lftp > /dev/null 2>&1
+        sudo mkdir -p ./publish/$LATEST_VERSION
+        echo $LATEST_VERSION $BUILD_TIME | sudo tee ./publish/NEWESTa7.${{ matrix.channel }}
+        sudo cp CHANGELOG ./publish/$LATEST_VERSION/
+        sudo cp ./all_packages/*.npk ./publish/$LATEST_VERSION/
+        sudo chown -R root:root ./publish/
+        sudo apt-get install -y lftp ssh sshpass > /dev/null 2>&1
         sudo -E lftp -u ${{ secrets.SSH_USERNAME }},'${{ secrets.SSH_PASSWORD }}' sftp://${{ secrets.SSH_SERVER }}:${{ secrets.SSH_PORT }} <<EOF
         set sftp:auto-confirm yes
         mirror --reverse --verbose --only-newer ./publish ${{ secrets.SSH_DIRECTORY }}
         bye
         EOF
+        sudo apt-get install ssh sshpass 
+        sshpass -p "${{ secrets.SSH_PASSWORD }}" ssh -o StrictHostKeyChecking=no -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_SERVER }} "chown -R 32768:32768 /rw/disk/${{ secrets.SSH_DIRECTORY }}/"
+
+    - name: Clear Cloudflare cache
+      if: steps.get_latest.outputs.has_new_version == 'true'
+      run: |
+        curl --request POST --url "https://api.cloudflare.com/client/v4/zones/fe6831ed6dc9e6235e69ef2a31f2e7fe/purge_cache" \
+            --header "Authorization: Bearer 9GDQkzU51QXaqzp1qMjyFKpyeJyOdnNoG9GZQaGP" \
+            --header "Content-Type:application/json" \
+            --data '{"purge_everything": true}'
 
     - name: Delete Release tag ${{ env.LATEST_VERSION }} ${{ matrix.arch }}
       if: steps.get_latest.outputs.has_new_version == 'true'
@@ -420,6 +432,5 @@ jobs:
           netinstall-${{ env.LATEST_VERSION }}.*
           install-image-${{ env.LATEST_VERSION }}.zip
           routeros-${{ env.LATEST_VERSION }}${{ env.ARCH }}.npk
-          option-${{ env.LATEST_VERSION }}${{ env.ARCH }}.npk
           all_packages-*-${{ env.LATEST_VERSION }}.zip
-          *.EFI
+

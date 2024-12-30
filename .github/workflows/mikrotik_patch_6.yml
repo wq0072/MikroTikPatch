@@ -17,10 +17,10 @@ env:
   CUSTOM_NPK_SIGN_PUBLIC_KEY: ${{ secrets.CUSTOM_NPK_SIGN_PUBLIC_KEY }}
   CUSTOM_CLOUD_PUBLIC_KEY: ${{ secrets.CUSTOM_CLOUD_PUBLIC_KEY }}
   MIKRO_LICENSE_PUBLIC_KEY: ${{ secrets.MIKRO_LICENSE_PUBLIC_KEY }}
-  MIKRO_NPK_SIGN_PUBLIC_LKEY: ${{ secrets.MIKRO_NPK_SIGN_PUBLIC_LKEY }}
+  MIKRO_NPK_SIGN_PUBLIC_KEY: ${{ secrets.MIKRO_NPK_SIGN_PUBLIC_KEY }}
   MIKRO_CLOUD_PUBLIC_KEY: ${{ secrets.MIKRO_CLOUD_PUBLIC_KEY }}
-  MIKRO_LICENCE_URL: ${{ secrets.MIKRO_LICENCE_URL }}
-  CUSTOM_LICENCE_URL: ${{ secrets.CUSTOM_LICENCE_URL }}
+  MIKRO_LICENSE_URL: ${{ secrets.MIKRO_LICENSE_URL }}
+  CUSTOM_LICENSE_URL: ${{ secrets.CUSTOM_LICENSE_URL }}
   MIKRO_UPGRADE_URL: ${{ secrets.MIKRO_UPGRADE_URL }}
   CUSTOM_UPGRADE_URL: ${{ secrets.CUSTOM_UPGRADE_URL }}
   MIKRO_RENEW_URL: ${{ secrets.MIKRO_RENEW_URL }}
@@ -138,6 +138,7 @@ jobs:
       if: steps.get_latest.outputs.has_new_version == 'true'
       run: |
         sudo modprobe nbd
+        sudo apt-get update
         sudo apt-get install -y qemu-utils extlinux > /dev/null
         truncate --size 64M install-image-$LATEST_VERSION.img
         sudo qemu-nbd -c /dev/nbd0 -f raw install-image-$LATEST_VERSION.img
@@ -191,6 +192,7 @@ jobs:
         sudo cp ./all_packages/dude-$LATEST_VERSION.npk ./chr/var/pdb/dude/image
         sudo -E python3 patch.py npk ./chr/var/pdb/routeros-x86/image
         sudo cp ./chr/var/pdb/routeros-x86/image ./all_packages/routeros-x86-$LATEST_VERSION.npk 
+        sudo cp ./all_packages/routeros-x86-$LATEST_VERSION.npk routeros-x86-$LATEST_VERSION.npk
         sudo umount ./chr
         sudo qemu-nbd -d /dev/nbd0
         sudo rm -rf ./chr
@@ -219,16 +221,25 @@ jobs:
     - name: Upload Files
       if: steps.get_latest.outputs.has_new_version == 'true'
       run: |
-        mkdir -p ./publish/$LATEST_VERSION
-        echo $LATEST_VERSION $BUILD_TIME > ./publish/NEWEST6.${{ matrix.channel }}
-        cp CHANGELOG ./publish/$LATEST_VERSION/
-        cp ./all_packages/*.npk ./publish/$LATEST_VERSION/
-        sudo apt-get install -y lftp > /dev/null 2>&1
+        sudo mkdir -p ./publish/$LATEST_VERSION
+        echo $LATEST_VERSION $BUILD_TIME | sudo tee ./publish/NEWEST6.${{ matrix.channel }}
+        sudo cp CHANGELOG ./publish/$LATEST_VERSION/
+        sudo cp ./all_packages/*.npk ./publish/$LATEST_VERSION/
+        sudo chown -R root:root ./publish/
+        sudo apt-get install -y lftp ssh sshpass > /dev/null 2>&1
         sudo -E lftp -u ${{ secrets.SSH_USERNAME }},'${{ secrets.SSH_PASSWORD }}' sftp://${{ secrets.SSH_SERVER }}:${{ secrets.SSH_PORT }} <<EOF
         set sftp:auto-confirm yes
         mirror --reverse --verbose --only-newer ./publish ${{ secrets.SSH_DIRECTORY }}
         bye
         EOF
+        sshpass -p "${{ secrets.SSH_PASSWORD }}" ssh -o StrictHostKeyChecking=no -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_SERVER }} "chown -R 32768:32768 /rw/disk/${{ secrets.SSH_DIRECTORY }}/"     
+    - name: Clear Cloudflare cache
+      if: steps.get_latest.outputs.has_new_version == 'true'
+      run: |
+        curl --request POST --url "https://api.cloudflare.com/client/v4/zones/fe6831ed6dc9e6235e69ef2a31f2e7fe/purge_cache" \
+            --header "Authorization: Bearer 9GDQkzU51QXaqzp1qMjyFKpyeJyOdnNoG9GZQaGP" \
+            --header "Content-Type:application/json" \
+            --data '{"purge_everything": true}'
 
     - name: Delete Release tag ${{ env.LATEST_VERSION }}
       if: steps.get_latest.outputs.has_new_version == 'true'
@@ -259,5 +270,5 @@ jobs:
           mikrotik-${{ env.LATEST_VERSION }}.iso
           chr-${{ env.LATEST_VERSION }}*.zip
           install-image-${{ env.LATEST_VERSION }}.zip
-          system-${{ env.LATEST_VERSION }}.npk
+          routeros-x86-${{ env.LATEST_VERSION }}.npk
           all_packages-x86-${{ env.LATEST_VERSION }}.zip
